@@ -1,4 +1,4 @@
-package com.sabbirsamol.app
+package com.sabbirsamol.allahorpoth
 
 import android.app.Activity
 import android.content.Context
@@ -462,7 +462,7 @@ class MainActivity : Activity() {
             Pair("👤\nপ্রোফাইল", ProfileSettingsActivity::class.java)
         )
 
-        navItems.forEach { (label, targetClass) ->
+        navItems.forEach { (label, _) ->
             bottomNav.addView(Button(this).apply {
                 text = label
                 textSize = 10f
