@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723582119238",
+    "project_id": "allahor-poth",
+    "storage_bucket": "allahor-poth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723582119238:android:1a6d7ca4baba70a82b0947",
+        "android_client_info": {
+          "package_name": "com.sabbirsamol.allahorpoth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKT3_tshkBaGy5wS2IglnYpjw9fmURKtc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
