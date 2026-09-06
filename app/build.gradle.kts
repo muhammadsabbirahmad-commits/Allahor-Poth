@@ -44,5 +44,9 @@ dependencies {
     // Firebase & Google Sign-In
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
+
+    // PDF Viewer Library (AndroidPdfViewer)
+    implementation("com.github.barteksc:android-pdf-viewer:2.8.2")
 }
