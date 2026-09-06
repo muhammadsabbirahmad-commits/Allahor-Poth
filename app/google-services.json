@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "723582119238",
+    "firebase_url": "https://allahor-poth-default-rtdb.firebaseio.com",
+    "project_id": "allahor-poth",
+    "storage_bucket": "allahor-poth.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723582119238:android:1a6d7ca4baba70a82b0947",
+        "android_client_info": {
+          "package_name": "com.sabbirsamol.allahorpoth"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "723582119238-0r59abhv8plmreqjn2nrgcprk5o09gp8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sabbirsamol.allahorpoth",
+            "certificate_hash": "6e8b8b052076d97a34f06c827a1beb4949e91846"
+          }
+        },
+        {
+          "client_id": "723582119238-108olds9ve8lfl3he6uof42gm38rn42q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKT3_tshkBaGy5wS2IglnYpjw9fmURKtc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "723582119238-108olds9ve8lfl3he6uof42gm38rn42q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
