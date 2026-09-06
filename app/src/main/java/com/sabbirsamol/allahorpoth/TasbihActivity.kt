@@ -66,13 +66,30 @@ class TasbihActivity : ComponentActivity() {
     }
 
     private fun fetchTasbihFromFirebase() {
-        val userId = auth.currentUser?.uid ?: "default_user"
-        databaseRef.child("users").child(userId).child("main_count").get().addOnSuccessListener { snapshot: DataSnapshot ->
-            val cloudCount = snapshot.value as? Long
-            if (cloudCount != null && !isCustomMode) {
-                currentCount = cloudCount.toInt()
-                getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
-                updateDisplay()
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userId = currentUser.uid
+            databaseRef.child("users").child(userId).child("main_count").get().addOnSuccessListener { snapshot: DataSnapshot ->
+                val cloudCount = snapshot.value as? Long
+                if (cloudCount != null && !isCustomMode) {
+                    currentCount = cloudCount.toInt()
+                    getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+                    updateDisplay()
+                }
+            }
+        } else {
+            auth.signInAnonymously().addOnSuccessListener { authResult ->
+                val userId = authResult.user?.uid
+                if (userId != null) {
+                    databaseRef.child("users").child(userId).child("main_count").get().addOnSuccessListener { snapshot: DataSnapshot ->
+                        val cloudCount = snapshot.value as? Long
+                        if (cloudCount != null && !isCustomMode) {
+                            currentCount = cloudCount.toInt()
+                            getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+                            updateDisplay()
+                        }
+                    }
+                }
             }
         }
     }
@@ -242,21 +259,51 @@ class TasbihActivity : ComponentActivity() {
     private fun updateDisplay() { countTextView.text = bn(currentCount) }
 
     private fun saveProgress() {
-        val userId = auth.currentUser?.uid ?: "default_user"
-        if (isCustomMode) {
-            val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
-            val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                if (obj.getString("id") == customZikirId) { obj.put("read", currentCount); break }
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userId = currentUser.uid
+            if (isCustomMode) {
+                val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
+                val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    if (obj.getString("id") == customZikirId) { obj.put("read", currentCount); break }
+                }
+                prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
+
+                databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "ক্লাউডে জিকির ব্যাকআপ সফল!", Toast.LENGTH_SHORT).show()
+                    }
+            } else {
+                getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+
+                databaseRef.child("users").child(userId).child("main_count").setValue(currentCount)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "ক্লাউডে তাসবিহ ব্যাকআপ সফল!", Toast.LENGTH_SHORT).show()
+                    }
             }
-            prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
-
-            databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
         } else {
-            getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+            auth.signInAnonymously().addOnSuccessListener { authResult ->
+                val userId = authResult.user?.uid
+                if (userId != null) {
+                    if (isCustomMode) {
+                        val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
+                        val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
+                        for (i in 0 until jsonArray.length()) {
+                            val obj = jsonArray.getJSONObject(i)
+                            if (obj.getString("id") == customZikirId) { obj.put("read", currentCount); break }
+                        }
+                        prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
 
-            databaseRef.child("users").child(userId).child("main_count").setValue(currentCount)
+                        databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
+                    } else {
+                        getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+
+                        databaseRef.child("users").child(userId).child("main_count").setValue(currentCount)
+                    }
+                }
+            }
         }
     }
 
