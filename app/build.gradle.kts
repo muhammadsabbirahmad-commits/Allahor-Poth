@@ -41,12 +41,10 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    // Firebase & Google Sign-In
     implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
-    // PDF Viewer Library (AndroidPdfViewer)
-    implementation("com.github.barteksc:android-pdf-viewer:2.8.2")
+    implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1")
 }
