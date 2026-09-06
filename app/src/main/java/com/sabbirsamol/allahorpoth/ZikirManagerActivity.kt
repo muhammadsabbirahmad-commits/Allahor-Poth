@@ -1,105 +1,184 @@
 package com.sabbirsamol.allahorpoth
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.Gravity
 import android.widget.*
+import androidx.activity.ComponentActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
 import org.json.JSONArray
-import org.json.JSONObject
-import java.util.UUID
 
-class ZikirManagerActivity : Activity() {
+class TasbihActivity : ComponentActivity() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun bn(n: Int): String = n.toString().map { "০১২৩৪৫৬৭৮৯"[it - '0'] }.joinToString("")
 
     private var bgMain: Int = Color.BLACK
-    private var cardBg: Int = Color.WHITE
-    private var cardStroke: Int = Color.GRAY
     private var textMain: Int = Color.WHITE
-    private var textSub: Int = Color.GRAY
+    private var btnBg: Int = Color.GRAY
 
-    private lateinit var listContainer: LinearLayout
+    private var currentCount = 0
+    private var isCustomMode = false
+    private var customZikirId = ""
+    private var customZikirName = ""
+    private var customTarget = 0
+    private var hasShownPopup = false
+
+    private lateinit var countTextView: TextView
 
     private val databaseRef = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
+
+    private fun getBtnDrawable(color: Int, radius: Int = 6) = GradientDrawable().apply {
+        setColor(color); cornerRadius = dp(radius).toFloat()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val themeColors = ThemeManager.getTheme(this)
         bgMain = themeColors.bgMain
-        cardBg = themeColors.cardBg
-        cardStroke = themeColors.cardStroke
         textMain = themeColors.textMain
-        textSub = themeColors.textSub
+        btnBg = themeColors.btnBg
+
+        customZikirId = intent.getStringExtra("ZIKIR_ID") ?: ""
+        if (customZikirId.isNotEmpty()) {
+            isCustomMode = true
+            customZikirName = intent.getStringExtra("ZIKIR_NAME") ?: ""
+            customTarget = intent.getIntExtra("ZIKIR_TARGET", 0)
+            currentCount = intent.getIntExtra("ZIKIR_READ", 0)
+        } else {
+            currentCount = getSharedPreferences("TasbihData", Context.MODE_PRIVATE).getInt("main_count", 0)
+        }
 
         buildUI()
-        fetchZikirFromFirebase()
+        fetchTasbihFromFirebase()
     }
 
-    private fun fetchZikirFromFirebase() {
-        val userId = auth.currentUser?.uid ?: "default_user"
-        databaseRef.child("users").child(userId).child("zikir_list_data").get().addOnSuccessListener { snapshot: DataSnapshot ->
-            val cloudZikir = snapshot.value as? String
-            if (!cloudZikir.isNullOrEmpty()) {
-                getSharedPreferences("ZikirManager", Context.MODE_PRIVATE).edit().putString("zikir_list", cloudZikir).apply()
-                loadZikirList()
+    private fun fetchTasbihFromFirebase() {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userId = currentUser.uid
+            databaseRef.child("users").child(userId).child("main_count").get().addOnSuccessListener { snapshot: DataSnapshot ->
+                val cloudCount = snapshot.value as? Long
+                if (cloudCount != null && !isCustomMode) {
+                    currentCount = cloudCount.toInt()
+                    getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+                    updateDisplay()
+                }
+            }
+        } else {
+            auth.signInAnonymously().addOnSuccessListener { authResult ->
+                val userId = authResult.user?.uid
+                if (userId != null) {
+                    databaseRef.child("users").child(userId).child("main_count").get().addOnSuccessListener { snapshot: DataSnapshot ->
+                        val cloudCount = snapshot.value as? Long
+                        if (cloudCount != null && !isCustomMode) {
+                            currentCount = cloudCount.toInt()
+                            getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+                            updateDisplay()
+                        }
+                    }
+                }
             }
         }
     }
 
     private fun buildUI() {
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bgMain)
+            orientation = LinearLayout.VERTICAL; setBackgroundColor(bgMain)
+            setOnClickListener { incrementCount() }
         }
 
-        val top = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
-        top.addView(TextView(this).apply {
-            text = "📋 জিকির তালিকা ও টার্গেট"
-            textSize = 18f
-            setTextColor(textMain)
-            setTypeface(null, Typeface.BOLD)
+        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)) }
+        top.addView(TextView(this).apply { 
+            text = if (isCustomMode) "🕋 $customZikirName" else "🕋 সাধারণ তাসবিহ কাউন্টার"
+            textSize = 18f; setTextColor(textMain); setTypeface(null, Typeface.BOLD) 
+            setOnClickListener { finish() }
         }, LinearLayout.LayoutParams(0, -2, 1f))
-
+        
         top.addView(Button(this).apply {
-            text = "+ নতুন জিকির"
-            isAllCaps = false
-            textSize = 12f
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply { setColor(Color.parseColor("#047857")); cornerRadius = dp(6).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(dp(100), dp(38))
-            setOnClickListener { showAddEditDialog(null, -1) }
+            text = "রিসেট (০)"; isAllCaps = false; textSize = 13f; setTextColor(textMain)
+            background = getBtnDrawable(Color.parseColor("#475569"), 4)
+            layoutParams = LinearLayout.LayoutParams(dp(85), dp(38))
+            setOnClickListener { 
+                currentCount = 0; hasShownPopup = false; updateDisplay(); saveProgress() 
+                Toast.makeText(this@TasbihActivity, "গণনা রিসেট করা হয়েছে", Toast.LENGTH_SHORT).show()
+            }
         })
         root.addView(top)
 
-        val scroll = ScrollView(this).apply { isFillViewport = true }
-        listContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(75))
-        }
-        scroll.addView(listContainer)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val centerLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(20), dp(10), dp(20), dp(10)) }
 
-        val bottomNav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#0F172A"))
-            setPadding(dp(2), dp(4), dp(2), dp(4))
-            elevation = dp(8).toFloat()
+        val kaabaBox = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            background = null
+            layoutParams = LinearLayout.LayoutParams(dp(220), dp(220)).apply { bottomMargin = dp(15) }
+            setPadding(0, 0, 0, 0)
+        }
+
+        kaabaBox.addView(ImageView(this).apply {
+            val imgResId = resources.getIdentifier("kaaba_img", "drawable", packageName)
+            if (imgResId != 0) setImageResource(imgResId)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            layoutParams = LinearLayout.LayoutParams(-1, -1)
+        })
+        centerLayout.addView(kaabaBox)
+
+        val savedTheme = getSharedPreferences("AppSettings", Context.MODE_PRIVATE).getString("app_theme", "")
+        val isLightMode = savedTheme?.contains("সাদা") == true
+
+        countTextView = TextView(this).apply {
+            textSize = 85f
+            setTextColor(if (isLightMode) Color.BLACK else Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+        }
+        centerLayout.addView(countTextView)
+
+        if (isCustomMode) {
+            centerLayout.addView(TextView(this).apply { text = "টার্গেট: ${bn(customTarget)} বার"; textSize = 16f; setTextColor(if(isLightMode) Color.parseColor("#047857") else Color.parseColor("#FBBF24")); setTypeface(null, Typeface.BOLD); setPadding(0, 0, 0, dp(6)) })
+        } else {
+            centerLayout.addView(TextView(this).apply { text = "মুক্ত গণনা (প্রতি ১০০ পূর্ণে ভাইব্রেশন)"; textSize = 15f; setTextColor(if(isLightMode) Color.parseColor("#047857") else Color.parseColor("#FBBF24")); setTypeface(null, Typeface.BOLD); setPadding(0, 0, 0, dp(6)) })
+        }
+        centerLayout.addView(TextView(this).apply { text = "👇 স্ক্রিনের যেকোনো জায়গায় ট্যাপ করে গণনা করুন"; textSize = 13f; setTextColor(textMain) })
+
+        root.addView(centerLayout, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val actionRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; weightSum = 2f; setPadding(dp(16), dp(8), dp(16), dp(8)) }
+        if (isCustomMode) {
+            actionRow.addView(Button(this).apply {
+                text = "সাধারণ তাসবিহে ফিরে যান"; isAllCaps = false; setTextColor(Color.WHITE); textSize = 12f; background = getBtnDrawable(Color.parseColor("#374151"))
+                layoutParams = LinearLayout.LayoutParams(0, dp(45), 1f).apply { rightMargin = dp(5) }
+                setOnClickListener { startActivity(Intent(this@TasbihActivity, TasbihActivity::class.java)); finish() }
+            })
+            actionRow.addView(Button(this).apply {
+                text = "📋 জিকির তালিকা ও টার্গেট"; isAllCaps = false; setTextColor(Color.WHITE); textSize = 12f; background = getBtnDrawable(Color.parseColor("#274E3E"))
+                layoutParams = LinearLayout.LayoutParams(0, dp(45), 1f).apply { leftMargin = dp(5) }
+                setOnClickListener { startActivity(Intent(this@TasbihActivity, ZikirManagerActivity::class.java)); finish() }
+            })
+        } else {
+            actionRow.addView(Button(this).apply {
+                text = "📋 জিকির তালিকা ও টার্গেট"; isAllCaps = false; setTextColor(Color.WHITE); textSize = 14f; background = getBtnDrawable(Color.parseColor("#274E3E"), 8)
+                layoutParams = LinearLayout.LayoutParams(-1, dp(45))
+                setOnClickListener { startActivity(Intent(this@TasbihActivity, ZikirManagerActivity::class.java)) }
+            })
+        }
+        root.addView(actionRow)
+
+        val menu = LinearLayout(this).apply { 
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#0F172A")); setPadding(dp(2), dp(4), dp(2), dp(4)); elevation = dp(8).toFloat()
         }
 
         val navItems = listOf(
@@ -113,226 +192,142 @@ class ZikirManagerActivity : Activity() {
         )
 
         navItems.forEach { (label, _) ->
-            bottomNav.addView(Button(this).apply {
-                text = label
-                textSize = 10f
-                isAllCaps = false
-                minHeight = 0
-                minWidth = 0
-                setPadding(0, 0, 0, 0)
-                gravity = Gravity.CENTER
+            menu.addView(Button(this).apply {
+                text = label; textSize = 10f; isAllCaps = false; minHeight = 0; minWidth = 0
+                setPadding(0, 0, 0, 0); gravity = Gravity.CENTER
                 setTextColor(if (label.contains("তাসবিহ")) Color.parseColor("#10B981") else Color.parseColor("#9CA3AF"))
                 background = GradientDrawable()
                 setOnClickListener {
                     when {
-                        label.contains("হোম") -> { startActivity(Intent(this@ZikirManagerActivity, MainActivity::class.java)); finish() }
-                        label.contains("তাসবিহ") -> { startActivity(Intent(this@ZikirManagerActivity, TasbihActivity::class.java)); finish() }
-                        label.contains("লাইব্রেরী") -> { startActivity(Intent(this@ZikirManagerActivity, LibraryActivity::class.java)); finish() }
-                        label.contains("আমল") -> { startActivity(Intent(this@ZikirManagerActivity, MasnunAmolActivity::class.java)); finish() }
-                        label.contains("নোটপ্যাড") -> { startActivity(Intent(this@ZikirManagerActivity, NotepadActivity::class.java)); finish() }
-                        label.contains("সিঙ্ক") -> { fetchZikirFromFirebase(); Toast.makeText(this@ZikirManagerActivity, "ক্লাউড থেকে জিকির লিস্ট সিঙ্ক করা হয়েছে!", Toast.LENGTH_SHORT).show() }
-                        label.contains("প্রোফাইল") -> { startActivity(Intent(this@ZikirManagerActivity, ProfileSettingsActivity::class.java)); finish() }
+                        label.contains("হোম") -> { startActivity(Intent(this@TasbihActivity, MainActivity::class.java)); finish() }
+                        label.contains("তাসবিহ") -> {}
+                        label.contains("লাইব্রেরী") -> { startActivity(Intent(this@TasbihActivity, LibraryActivity::class.java)); finish() }
+                        label.contains("আমল") -> { startActivity(Intent(this@TasbihActivity, MasnunAmolActivity::class.java)); finish() }
+                        label.contains("নোটপ্যাড") -> { startActivity(Intent(this@TasbihActivity, NotepadActivity::class.java)); finish() }
+                        label.contains("সিঙ্ক") -> { fetchTasbihFromFirebase(); Toast.makeText(this@TasbihActivity, "তাসবিহ ডেটা সিঙ্ক করা হয়েছে!", Toast.LENGTH_SHORT).show() }
+                        label.contains("প্রোফাইল") -> { startActivity(Intent(this@TasbihActivity, ProfileSettingsActivity::class.java)); finish() }
                     }
                 }
             }, LinearLayout.LayoutParams(0, dp(52), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
-        root.addView(bottomNav, LinearLayout.LayoutParams(-1, dp(60)))
+        root.addView(menu, LinearLayout.LayoutParams(-1, dp(60)))
 
         setContentView(root)
-        loadZikirList()
+        updateDisplay()
     }
 
-    private fun loadZikirList() {
-        listContainer.removeAllViews()
-        val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
-        val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
+    private fun incrementCount() {
+        val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-        if (jsonArray.length() == 0) {
-            listContainer.addView(TextView(this).apply {
-                text = "কোনো কাস্টম জিকির যোগ করা হয়নি। ওপরে '+ নতুন জিকির' বাটনে ক্লিক করে যোগ করুন।"
-                textSize = 14f
-                setTextColor(textSub)
-                gravity = Gravity.CENTER
-                setPadding(0, dp(40), 0, 0)
-            })
-            return
-        }
-
-        for (i in 0 until jsonArray.length()) {
-            val obj = jsonArray.getJSONObject(i)
-            val id = obj.getString("id")
-            val name = obj.getString("name")
-            val target = obj.getInt("target")
-            val read = obj.getInt("read")
-
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                background = GradientDrawable().apply {
-                    setColor(cardBg)
-                    setStroke(dp(1), cardStroke)
-                    cornerRadius = dp(12).toFloat()
+        if (isCustomMode) {
+            if (currentCount >= customTarget) {
+                if (!hasShownPopup) {
+                    vibratePhone(v, 500)
+                    showTargetPopup()
+                    hasShownPopup = true
                 }
-                setPadding(dp(14), dp(14), dp(14), dp(14))
-                layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
+                return
             }
+            currentCount++
+            updateDisplay()
+            saveProgress()
 
-            card.addView(TextView(this).apply {
-                text = name
-                textSize = 16f
-                setTextColor(textMain)
-                setTypeface(null, Typeface.BOLD)
-                setPadding(0, 0, 0, dp(4))
-            })
+            if (currentCount == customTarget) {
+                vibratePhone(v, 500)
+                showTargetPopup()
+                hasShownPopup = true
+            }
+        } else {
+            currentCount++
+            updateDisplay()
+            saveProgress()
 
-            card.addView(TextView(this).apply {
-                text = "পড়া হয়েছে: ${bn(read)} / ${bn(target)} বার"
-                textSize = 13f
-                setTextColor(textSub)
-                setPadding(0, 0, 0, dp(8))
-            })
-
-            val btnRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; weightSum = 3f }
-
-            btnRow.addView(Button(this).apply {
-                text = "পড়ুন"
-                isAllCaps = false
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                background = GradientDrawable().apply { setColor(Color.parseColor("#047857")); cornerRadius = dp(6).toFloat() }
-                layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { rightMargin = dp(4) }
-                setOnClickListener {
-                    val intent = Intent(this@ZikirManagerActivity, TasbihActivity::class.java).apply {
-                        putExtra("ZIKIR_ID", id)
-                        putExtra("ZIKIR_NAME", name)
-                        putExtra("ZIKIR_TARGET", target)
-                        putExtra("ZIKIR_READ", read)
-                    }
-                    startActivity(intent)
-                    finish()
-                }
-            })
-
-            btnRow.addView(Button(this).apply {
-                text = "এডিট"
-                isAllCaps = false
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                background = GradientDrawable().apply { setColor(Color.parseColor("#2563EB")); cornerRadius = dp(6).toFloat() }
-                layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { setMargins(dp(2), 0, dp(2), 0) }
-                setOnClickListener { showAddEditDialog(obj, i) }
-            })
-
-            btnRow.addView(Button(this).apply {
-                text = "ডিলিট"
-                isAllCaps = false
-                setTextColor(Color.WHITE)
-                textSize = 12f
-                background = GradientDrawable().apply { setColor(Color.parseColor("#DC2626")); cornerRadius = dp(6).toFloat() }
-                layoutParams = LinearLayout.LayoutParams(0, dp(38), 1f).apply { leftMargin = dp(4) }
-                setOnClickListener { deleteZikir(i) }
-            })
-
-            card.addView(btnRow)
-            listContainer.addView(card)
+            if (currentCount > 0 && currentCount % 100 == 0) {
+                vibratePhone(v, 500)
+            }
         }
     }
 
-    private fun showAddEditDialog(existingObj: JSONObject?, index: Int) {
-        val dialogLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bgMain)
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-        }
+    private fun vibratePhone(vibrator: Vibrator, duration: Long) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else { @Suppress("DEPRECATION") vibrator.vibrate(duration) }
+        } catch (e: Exception) {}
+    }
 
-        dialogLayout.addView(TextView(this).apply {
-            text = if (existingObj == null) "নতুন জিকির যোগ করুন" else "জিকির এডিট করুন"
-            textSize = 18f
-            setTextColor(textMain)
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 0, 0, dp(15))
+    private fun updateDisplay() { countTextView.text = bn(currentCount) }
+
+    private fun saveProgress() {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userId = currentUser.uid
+            if (isCustomMode) {
+                val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
+                val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    if (obj.getString("id") == customZikirId) { obj.put("read", currentCount); break }
+                }
+                prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
+
+                databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "ক্লাউডে জিকির ব্যাকআপ সফল!", Toast.LENGTH_SHORT).show()
+                    }
+            } else {
+                getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+
+                databaseRef.child("users").child(userId).child("main_count").setValue(currentCount)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "ক্লাউডে তাসবিহ ব্যাকআপ সফল!", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        } else {
+            auth.signInAnonymously().addOnSuccessListener { authResult ->
+                val userId = authResult.user?.uid
+                if (userId != null) {
+                    if (isCustomMode) {
+                        val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
+                        val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
+                        for (i in 0 until jsonArray.length()) {
+                            val obj = jsonArray.getJSONObject(i)
+                            if (obj.getString("id") == customZikirId) { obj.put("read", currentCount); break }
+                        }
+                        prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
+
+                        databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
+                    } else {
+                        getSharedPreferences("TasbihData", Context.MODE_PRIVATE).edit().putInt("main_count", currentCount).apply()
+
+                        databaseRef.child("users").child(userId).child("main_count").setValue(currentCount)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showTargetPopup() {
+        val dialogLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bgMain); setPadding(dp(20), dp(20), dp(20), dp(20)) }
+        dialogLayout.addView(TextView(this).apply { text = "মাশাআল্লাহ!"; textSize = 22f; setTextColor(textMain); setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(10)) })
+        dialogLayout.addView(TextView(this).apply { text = "আপনার নির্ধারিত টার্গেট (${bn(customTarget)} বার) পূর্ণ হয়েছে। নতুন করে শুরু করতে রিসেট করুন।"; textSize = 15f; setTextColor(textMain); gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(20)) })
+        
+        val dialog = AlertDialog.Builder(this).setView(dialogLayout).setCancelable(false).create()
+        
+        dialogLayout.addView(Button(this).apply {
+            text = "রিসেট করে আবার শুরু করুন"; setTextColor(Color.WHITE); background = getBtnDrawable(Color.parseColor("#047857"), 6)
+            layoutParams = LinearLayout.LayoutParams(-1, dp(45)).apply { bottomMargin = dp(8) }
+            setOnClickListener { 
+                currentCount = 0; hasShownPopup = false; updateDisplay(); saveProgress(); dialog.dismiss()
+            }
         })
 
-        val inputName = EditText(this).apply {
-            hint = "জিকিরের নাম (যেমন: সুবহানাল্লাহ)"
-            setText(existingObj?.optString("name") ?: "")
-            setTextColor(textMain)
-            setHintTextColor(Color.GRAY)
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = GradientDrawable().apply { setStroke(dp(1), cardStroke); cornerRadius = dp(6).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-        }
-        dialogLayout.addView(inputName)
-
-        val inputTarget = EditText(this).apply {
-            hint = "টার্গেট সংখ্যা (যেমন: ১০০)"
-            setText(if (existingObj != null) existingObj.optInt("target").toString() else "")
-            setTextColor(textMain)
-            setHintTextColor(Color.GRAY)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = GradientDrawable().apply { setStroke(dp(1), cardStroke); cornerRadius = dp(6).toFloat() }
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(20) }
-        }
-        dialogLayout.addView(inputTarget)
-
-        val dialog = AlertDialog.Builder(this).setView(dialogLayout).create()
-
-        val saveBtn = Button(this).apply {
-            text = "সংরক্ষণ করুন"
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply { setColor(Color.parseColor("#047857")); cornerRadius = dp(6).toFloat() }
+        dialogLayout.addView(Button(this).apply {
+            text = "বন্ধ করুন"; setTextColor(Color.WHITE); background = getBtnDrawable(Color.parseColor("#475569"), 6)
             layoutParams = LinearLayout.LayoutParams(-1, dp(45))
-            setOnClickListener {
-                val name = inputName.text.toString().trim()
-                val targetStr = inputTarget.text.toString().trim()
+            setOnClickListener { dialog.dismiss() }
+        })
 
-                if (name.isNotEmpty() && targetStr.isNotEmpty()) {
-                    val target = targetStr.toIntOrNull() ?: 100
-                    saveZikirToPrefs(existingObj?.optString("id") ?: UUID.randomUUID().toString(), name, target, existingObj?.optInt("read") ?: 0, index)
-                    dialog.dismiss()
-                    loadZikirList()
-                } else {
-                    Toast.makeText(this@ZikirManagerActivity, "সব তথ্য সঠিকভাবে পূরণ করুন", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        dialogLayout.addView(saveBtn)
         dialog.show()
-    }
-
-    private fun saveZikirToPrefs(id: String, name: String, target: Int, read: Int, index: Int) {
-        val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
-        val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
-        val obj = JSONObject().apply {
-            put("id", id)
-            put("name", name)
-            put("target", target)
-            put("read", read)
-        }
-
-        if (index >= 0 && index < jsonArray.length()) {
-            jsonArray.put(index, obj)
-        } else {
-            jsonArray.put(obj)
-        }
-
-        prefs.edit().putString("zikir_list", jsonArray.toString()).apply()
-
-        val userId = auth.currentUser?.uid ?: "default_user"
-        databaseRef.child("users").child(userId).child("zikir_list_data").setValue(jsonArray.toString())
-    }
-
-    private fun deleteZikir(index: Int) {
-        val prefs = getSharedPreferences("ZikirManager", Context.MODE_PRIVATE)
-        val jsonArray = JSONArray(prefs.getString("zikir_list", "[]") ?: "[]")
-        val newArray = JSONArray()
-        for (i in 0 until jsonArray.length()) {
-            if (i != index) newArray.put(jsonArray.get(i))
-        }
-        prefs.edit().putString("zikir_list", newArray.toString()).apply()
-        loadZikirList()
-
-        val userId = auth.currentUser?.uid ?: "default_user"
-        databaseRef.child("users").child(userId).child("zikir_list_data").setValue(newArray.toString())
     }
 }
