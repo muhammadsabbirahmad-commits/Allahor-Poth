@@ -24,11 +24,11 @@ jobs:
         unzip -q gradle-8.7-bin.zip
         echo "$PWD/gradle-8.7/bin" >> $GITHUB_PATH
 
-    - name: Run Signing Report (SHA-1 বের করার জন্য)
-      run: gradle signingReport
-
     - name: Build Debug APK with Gradle
       run: gradle assembleDebug
+
+    - name: Run Signing Report (SHA-1 বের করার জন্য)
+      run: gradle signingReport
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
