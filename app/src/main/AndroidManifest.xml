@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.sabbirsamol.allahorpoth">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".HomeBottomMenuFix"
         android:allowBackup="true"
-        android:label="Allahor Poth"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+        android:theme="@style/Theme.AllahrPoth">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -14,6 +23,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".TasbihActivity" />
+        <activity android:name=".LibraryActivity" />
+        <activity android:name=".PdfReaderActivity" />
+        <activity android:name=".ZikirManagerActivity" />
+        <activity android:name=".NotepadActivity" />
+        <activity android:name=".ProfileSettingsActivity" />
+        <activity android:name=".MasnunAmolActivity" />
+
     </application>
 
 </manifest>
