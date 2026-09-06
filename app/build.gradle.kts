@@ -46,6 +46,5 @@ dependencies {
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
-    // JitPack-এর জন্য সঠিক নাম ও স্থিতিশীল ভার্সন (AndroidPdfViewer)
     implementation("com.github.barteksc:AndroidPdfViewer:2.8.2")
 }
