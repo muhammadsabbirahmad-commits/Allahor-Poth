@@ -17,18 +17,16 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+        cache: 'gradle'
 
     - name: Download and Install Gradle 8.7
       run: |
-        wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
+        wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
         unzip -q gradle-8.7-bin.zip
         echo "$PWD/gradle-8.7/bin" >> $GITHUB_PATH
 
     - name: Build Debug APK with Gradle
-      run: gradle assembleDebug
-
-    - name: Run Signing Report (SHA-1 বের করার জন্য)
-      run: gradle signingReport
+      run: gradle assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
