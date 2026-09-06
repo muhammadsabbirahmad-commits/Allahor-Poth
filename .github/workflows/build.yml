@@ -1,36 +1,37 @@
-name: Build Allahor Poth APK
+name: Build Allahr Poth APK
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
 
-      - name: Build APK
-        run: gradle assembleDebug
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Allahor-Poth-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
+    - name: Run Signing Report (SHA-1 ফিঙ্গারপ্রিন্ট দেখার জন্য)
+      run: ./gradlew signingReport
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Allahor-Poth-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
