@@ -10,7 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven(url = "https://jitpack.io") // এই লাইনটি যোগ করতে হবে
+        maven(url = "https://jitpack.io")
     }
 }
 
