@@ -2,7 +2,6 @@ package com.sabbirsamol.allahorpoth
 
 import android.graphics.Color
 import android.os.Bundle
-import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -43,8 +42,11 @@ class ProfileSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         auth = FirebaseAuth.getInstance()
 
+        // আপনার ফায়ারবেস প্রজেক্টের Web Client ID এখানে বসাতে হবে (Firebase Console > Authentication > Sign-in method > Google থেকে পাবেন)
+        val webClientID = "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
+
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestIdToken(webClientID)
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
