@@ -15,7 +15,6 @@ class HomeBottomMenuFix : Application() {
         super.onCreate()
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(activity: Activity) {
-                // ভিউ ট্রি পুরোপুরি রেন্ডার হওয়ার জন্য ছোট একটি ডিলে দেওয়া হয়েছে[span_0](start_span)[span_0](end_span)
                 activity.window.decorView.postDelayed({ fixBottomMenu(activity) }, 100)
             }
 
@@ -32,7 +31,6 @@ class HomeBottomMenuFix : Application() {
         val root = activity.window.decorView.findViewById<View>(android.R.id.content) ?: return
         val menu = findSevenButtonMenu(root) ?: return
         
-        // ডাবল মডিফিকেশন রোধ করার জন্য ট্যাগ চেক[span_1](start_span)[span_1](end_span)
         if (menu.tag == "fixed_bottom_menu_v1") return
 
         menu.tag = "fixed_bottom_menu_v1"
