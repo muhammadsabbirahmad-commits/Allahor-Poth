@@ -24,9 +24,6 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Run Signing Report (SHA-1 ফিঙ্গারপ্রিন্ট দেখার জন্য)
-      run: ./gradlew signingReport
-
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
