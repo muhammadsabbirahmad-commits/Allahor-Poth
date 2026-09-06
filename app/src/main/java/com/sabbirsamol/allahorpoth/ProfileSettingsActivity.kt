@@ -42,13 +42,12 @@ class ProfileSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         auth = FirebaseAuth.getInstance()
 
-        // আপনার ফায়ারবেস প্রজেক্টের Web Client ID এখানে বসাতে হবে (Firebase Console > Authentication > Sign-in method > Google থেকে পাবেন)
-        val webClientID = "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
-
+        // Firebase-এর google-services.json ফাইল থেকে স্বয়ংক্রিয়ভাবে Client ID নিয়ে নেবে
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientID)
+            .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
+            
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         val root = LinearLayout(this).apply {
